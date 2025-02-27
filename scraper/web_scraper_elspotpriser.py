@@ -10,10 +10,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-from database.db_handler import DatabaseHandler
 import time as timenator
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 import platform
+from selenium.webdriver.firefox.service import Service as FirefoxService
+import os
 
 def web_scrape_windows():
     """Windows version using Chrome"""
@@ -34,6 +35,20 @@ def web_scrape_windows():
             driver.quit()
         return None
 
+def find_geckodriver():
+    """Find geckodriver in common locations"""
+    possible_locations = [
+        '/usr/local/bin/geckodriver',
+        '/usr/bin/geckodriver',
+        '/snap/bin/geckodriver'
+    ]
+    
+    for location in possible_locations:
+        if os.path.exists(location):
+            return location
+    
+    return None
+
 def web_scrape_linux():
     """Linux version using Firefox"""
     firefox_options = FirefoxOptions()
@@ -42,7 +57,17 @@ def web_scrape_linux():
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
 
     try:
-        driver = webdriver.Firefox(options=firefox_options)
+        # Find geckodriver location
+        geckodriver_path = find_geckodriver()
+        if not geckodriver_path:
+            raise Exception("geckodriver not found. Please install it first.")
+
+        # Create Firefox service using found geckodriver
+        service = FirefoxService(executable_path=geckodriver_path)
+        driver = webdriver.Firefox(
+            service=service,
+            options=firefox_options
+        )
         return scrape_with_driver(driver)
     except Exception as e:
         print(f"Error in Linux scraping: {e}")
