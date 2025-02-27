@@ -40,10 +40,12 @@ def validate_prices(api_df, web_df, max_diff_threshold=0.5):
         return False
 
     # Calculate price differences
-    price_diff = abs(merged['price_api'] - merged['price_web'])
-    
+    merged["price_diff"] = abs(merged['price_api'] - merged['price_web'])
+
+    print(merged.to_string(index=False))
+
     # Check if any price difference exceeds threshold
-    return price_diff.max() <= max_diff_threshold
+    return merged["price_diff"].max() <= max_diff_threshold
 
 def scrape_prices():
     """

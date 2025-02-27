@@ -32,4 +32,3 @@ sudo mv geckodriver /usr/local/bin/
 
 sudo apt-get install locales
 sudo locale-gen da_DK.UTF-8
-sudo apt-get install language-pack-da
