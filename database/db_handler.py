@@ -61,3 +61,5 @@ if __name__ == "__main__":
     db = DatabaseHandler()
     db.initialize_db()
     db.initialize_db(path=db.backup_path)
+
+    print(db.get_latest_prices(limit=1000))

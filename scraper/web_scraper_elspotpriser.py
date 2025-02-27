@@ -13,7 +13,13 @@ from webdriver_manager.chrome import ChromeDriverManager
 from database.db_handler import DatabaseHandler
 import time as timenator
 
-def get_electricity_prices():
+def web_scape_el_prices():
+    """
+    This script get the power prices in DK1 from the elspotpriser.dk website.
+
+    return (pd.DataFrame): DataFrame with timestamp and prices in (kr / kWh).
+    """
+
     # Setup Chrome options
     chrome_options = Options()
     chrome_options.add_argument("--headless")  # Run in headless mode
@@ -38,7 +44,7 @@ def get_electricity_prices():
             if len(rows) > 0:
                 break
 
-            timenator.sleep(1)
+            timenator.sleep(10)
 
 
         price_data = []
@@ -79,18 +85,8 @@ def get_electricity_prices():
 
 
 if __name__ == "__main__":
-    prices_df = get_electricity_prices()
+    prices_df = web_scape_el_prices()
     print("prices")
     if prices_df is not None:
         print("Current electricity prices:")
         print(prices_df)
-
-        # prices_df["price"] *= 1000  # we over-write the price column with the new value
-        # Save to database instead of CSV
-        db = DatabaseHandler()
-        db.save_prices(prices_df)
-
-        # Verify saved data
-        latest_prices = db.get_latest_prices()
-        print("\nLatest prices from database:")
-        print(latest_prices)

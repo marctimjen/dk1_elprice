@@ -1,0 +1,26 @@
+# On windows:
+python -m venv venv
+venv\Scripts\activate
+
+# On ubuntu:
+python3 -m venv venv
+source venv/bin/activate
+
+# make req file:
+pip3 freeze > req.txt
+
+# install from req file:
+pip3 install -r req.txt
+
+
+# cron:
+crontab -e
+
+# add test:
+*/1 * * * * /bin/timeout -s 2 290 python3 dydx-trading-bot/program/telegram_func.py > output.txt 2>&1
+
+*/1 * * * * /bin/timeout -s 2 290 /home/ubuntu/dydx-trading-bot/venv/bin/python3 /home/ubuntu/dydx-trading-bot/program/telegram_func.py > /home/user/output.txt 2>&1
+
+
+crontab -l
+
