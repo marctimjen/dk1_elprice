@@ -101,23 +101,6 @@ elif system == 'linux':
         return (pd.DataFrame): DataFrame with timestamp and prices in (kr / kWh).
         """
         print("Starting web scraping on Linux...")
-        
-        # Try different Danish locale variations
-        danish_locales = ['da_DK.UTF-8', 'da_DK.utf8', 'da_DK', 'da']
-        locale_set = False
-        
-        for danish_locale in danish_locales:
-            try:
-                locale.setlocale(locale.LC_TIME, danish_locale)
-                print(f"Successfully set locale to {danish_locale}")
-                locale_set = True
-                break
-            except locale.Error as e:
-                print(f"Failed to set locale {danish_locale}: {e}")
-                continue
-
-        if not locale_set:
-            print("Warning: Could not set Danish locale, will use fallback parsing")
 
         # Setup Firefox options
         firefox_options = FirefoxOptions()
@@ -138,6 +121,22 @@ elif system == 'linux':
 
             price_data = []
             table_found = False
+
+            # Month mapping (both English and Danish)
+            month_map = {
+                'januar': 1, 'january': 1,
+                'februar': 2, 'february': 2,
+                'marts': 3, 'march': 3,
+                'april': 4, 'april': 4,
+                'maj': 5, 'may': 5,
+                'juni': 6, 'june': 6,
+                'juli': 7, 'july': 7,
+                'august': 8, 'august': 8,
+                'september': 9, 'september': 9,
+                'oktober': 10, 'october': 10,
+                'november': 11, 'november': 11,
+                'december': 12, 'december': 12
+            }
 
             # Wait for the table to be populated
             for attempt in range(5):
@@ -161,75 +160,54 @@ elif system == 'linux':
                 return None
 
             for row in rows:
-                cols = row.find_elements(By.TAG_NAME, "td")
-                if len(cols) >= 2:
-                    time = cols[0].text.strip()
-                    price = cols[1].text.strip().replace(' kr / kWh', '')
-
-                    try:
-                        price_data.append({
-                            'timestamp': time,
-                            'price': float(price)
-                        })
-                    except ValueError:
-                        continue
-
-            driver.quit()
-
-            # Print the raw data before parsing
-            print(f"Raw price data collected: {price_data}")
-
-            if price_data:
-                df = pd.DataFrame(price_data)
-                print(f"Raw DataFrame before parsing:\n{df}")
-                
                 try:
-                    if locale_set:
-                        print("Using locale-based parsing")
-                        df['timestamp'] = pd.to_datetime(df['timestamp'], format='%A, %d %B at %H:%M')
-                    else:
-                        print("Using fallback parsing")
-                        # Fallback parsing method: manually handle the date parts
-                        def parse_date(date_str):
-                            # Expected format: "Friday, 28 February at 23:00"
-                            parts = date_str.replace(',', '').split()
+                    cols = row.find_elements(By.TAG_NAME, "td")
+                    if len(cols) >= 2:
+                        time_str = cols[0].text.strip()
+                        price = cols[1].text.strip().replace(' kr / kWh', '')
+                        
+                        # Print raw data for debugging
+                        print(f"Raw time string: {time_str}")
+                        print(f"Raw price: {price}")
+
+                        try:
+                            # Parse the date string manually
+                            # Expected format: "Day, DD Month at HH:MM" (in English or Danish)
+                            parts = time_str.replace(',', '').split()
                             day = int(parts[1])
-                            month = parts[2]
+                            month = parts[2].lower()
                             time_parts = parts[4].split(':')
                             hour = int(time_parts[0])
                             minute = int(time_parts[1])
                             
-                            # Map Danish month names to numbers if needed
-                            month_map = {
-                                'januar': 1, 'februar': 2, 'marts': 3, 'april': 4,
-                                'maj': 5, 'juni': 6, 'juli': 7, 'august': 8,
-                                'september': 9, 'oktober': 10, 'november': 11, 'december': 12
-                            }
-                            
-                            month_num = month_map.get(month.lower(), 1)  # Default to January if not found
+                            month_num = month_map.get(month, 1)
                             current_year = datetime.now(pytz.timezone('Europe/Copenhagen')).year
                             
-                            return datetime(current_year, month_num, day, hour, minute)
-                        
-                        df['timestamp'] = df['timestamp'].apply(parse_date)
+                            timestamp = datetime(current_year, month_num, day, hour, minute)
+                            price_value = float(price)
 
-                    # Add timezone information
-                    df['timestamp'] = df['timestamp'].dt.tz_localize('Europe/Copenhagen')
-                    
-                    # Reset locale if it was set
-                    if locale_set:
-                        locale.setlocale(locale.LC_TIME, '')
-                        
-                    print(f"Final DataFrame after parsing:\n{df}")
-                    return df
+                            price_data.append({
+                                'timestamp': timestamp,
+                                'price': price_value
+                            })
+                            print(f"Parsed datetime: {timestamp}, price: {price_value}")
+
+                        except (ValueError, IndexError) as e:
+                            print(f"Error parsing row data: {e}")
+                            continue
 
                 except Exception as e:
-                    print(f"Error during date parsing: {str(e)}")
-                    import traceback
-                    print(traceback.format_exc())
-                    if locale_set:
-                        locale.setlocale(locale.LC_TIME, '')
-                    return None
+                    print(f"Error processing row: {e}")
+                    continue
+
+            driver.quit()
+
+            if price_data:
+                df = pd.DataFrame(price_data)
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df['timestamp'] = df['timestamp'].dt.tz_localize('Europe/Copenhagen')
+                print(f"Final DataFrame:\n{df}")
+                return df
 
             return None
 
@@ -240,13 +218,6 @@ elif system == 'linux':
             if 'driver' in locals():
                 driver.quit()
             return None
-
-        finally:
-            if locale_set:
-                try:
-                    locale.setlocale(locale.LC_TIME, '')
-                except:
-                    pass
 else:
     raise NotImplementedError(f"No scraper implementation for {system}")
 
