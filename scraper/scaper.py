@@ -58,24 +58,32 @@ def scrape_prices():
     web_data = None
     
     # Try to get API prices
-    for _ in range(5):
+    for attempt in range(5):
         try:
+            print(f"\nAttempting to get API prices (attempt {attempt + 1}/5)")
             api_data = api_get_el_prices()
             print("Successfully retrieved API prices")
             break
         except Exception as e:
-            print(f"Failed to get API prices: {e}")
+            print(f"Failed to get API prices (attempt {attempt + 1}/5): {e}")
             time.sleep(60)
 
-
     # Try to get web prices
-    for _ in range(5):
+    for attempt in range(5):
         try:
+            print(f"\nAttempting to get web prices (attempt {attempt + 1}/5)")
             web_data = web_scape_el_prices()
-            print("Successfully retrieved web prices")
-            break
+            if web_data is not None:
+                print("Successfully retrieved web prices")
+                print(f"Web data shape: {web_data.shape}")
+                print(f"Web data sample:\n{web_data.head()}")
+                break
+            else:
+                print("Web scraper returned None")
         except Exception as e:
-            print(f"Failed to get web prices: {e}")
+            print(f"Failed to get web prices (attempt {attempt + 1}/5): {e}")
+            import traceback
+            print(traceback.format_exc())
             time.sleep(60)
 
     # If we have both sources, validate API prices

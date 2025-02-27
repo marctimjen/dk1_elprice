@@ -1,6 +1,10 @@
 import sys
 from pathlib import Path
 
+# Add project root to Python path
+project_root = str(Path(__file__).parent.parent)
+sys.path.append(project_root)
+
 import locale
 import platform
 import time as timenator
@@ -96,7 +100,8 @@ elif system == 'linux':
 
         return (pd.DataFrame): DataFrame with timestamp and prices in (kr / kWh).
         """
-        print("running linux")
+        print("Starting web scraping on Linux...")
+        
         # Try different Danish locale variations
         danish_locales = ['da_DK.UTF-8', 'da_DK.utf8', 'da_DK', 'da']
         locale_set = False
@@ -104,39 +109,57 @@ elif system == 'linux':
         for danish_locale in danish_locales:
             try:
                 locale.setlocale(locale.LC_TIME, danish_locale)
+                print(f"Successfully set locale to {danish_locale}")
                 locale_set = True
                 break
-            except locale.Error:
+            except locale.Error as e:
+                print(f"Failed to set locale {danish_locale}: {e}")
                 continue
+
+        if not locale_set:
+            print("Warning: Could not set Danish locale, will use fallback parsing")
 
         # Setup Firefox options
         firefox_options = FirefoxOptions()
         firefox_options.add_argument("--headless")
         firefox_options.set_preference("general.useragent.override",
-                                       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+                                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
 
         try:
-            # Initialize the Chrome WebDriver
+            print("Initializing Firefox webdriver...")
             service = FirefoxService(executable_path="/usr/local/bin/geckodriver")
             driver = webdriver.Firefox(
                 service=service,
                 options=firefox_options
             )
 
-            # Navigate to the website
+            print("Navigating to elspotpriser.dk...")
             driver.get("https://elspotpriser.dk/")
 
-            # Wait for the table to be populated
-            for _ in range(5):
-                wait = WebDriverWait(driver, 10)
-                table = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "data")))
-                rows = table.find_elements(By.TAG_NAME, "tr")[1:]  # Skip header row
-                if len(rows) > 0:
-                    break
-
-                timenator.sleep(10)
-
             price_data = []
+            table_found = False
+
+            # Wait for the table to be populated
+            for attempt in range(5):
+                try:
+                    print(f"Attempt {attempt + 1} to find price table...")
+                    wait = WebDriverWait(driver, 10)
+                    table = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "data")))
+                    rows = table.find_elements(By.TAG_NAME, "tr")[1:]  # Skip header row
+                    if len(rows) > 0:
+                        table_found = True
+                        print(f"Found {len(rows)} rows of price data")
+                        break
+                    print("Table found but no rows")
+                except Exception as e:
+                    print(f"Attempt {attempt + 1} failed: {e}")
+                    timenator.sleep(10)
+
+            if not table_found:
+                print("Failed to find price table after all attempts")
+                driver.quit()
+                return None
+
             for row in rows:
                 cols = row.find_elements(By.TAG_NAME, "td")
                 if len(cols) >= 2:
@@ -153,14 +176,19 @@ elif system == 'linux':
 
             driver.quit()
 
+            # Print the raw data before parsing
+            print(f"Raw price data collected: {price_data}")
+
             if price_data:
                 df = pd.DataFrame(price_data)
+                print(f"Raw DataFrame before parsing:\n{df}")
                 
-                # Different parsing approach based on whether locale was set
                 try:
                     if locale_set:
+                        print("Using locale-based parsing")
                         df['timestamp'] = pd.to_datetime(df['timestamp'], format='%A, %d %B at %H:%M')
                     else:
+                        print("Using fallback parsing")
                         # Fallback parsing method: manually handle the date parts
                         def parse_date(date_str):
                             # Expected format: "Friday, 28 February at 23:00"
@@ -192,10 +220,13 @@ elif system == 'linux':
                     if locale_set:
                         locale.setlocale(locale.LC_TIME, '')
                         
+                    print(f"Final DataFrame after parsing:\n{df}")
                     return df
 
                 except Exception as e:
-                    print(f"Error parsing dates: {e}")
+                    print(f"Error during date parsing: {str(e)}")
+                    import traceback
+                    print(traceback.format_exc())
                     if locale_set:
                         locale.setlocale(locale.LC_TIME, '')
                     return None
@@ -203,10 +234,19 @@ elif system == 'linux':
             return None
 
         except Exception as e:
-            print(f"Error processing data: {e}")
+            print(f"Critical error in web scraping: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             if 'driver' in locals():
                 driver.quit()
             return None
+
+        finally:
+            if locale_set:
+                try:
+                    locale.setlocale(locale.LC_TIME, '')
+                except:
+                    pass
 else:
     raise NotImplementedError(f"No scraper implementation for {system}")
 
