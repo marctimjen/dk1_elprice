@@ -1,23 +1,14 @@
-from datetime import datetime
-import platform
+import sys
+from pathlib import Path
 
-import pandas as pd
-import pytz
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
+# Add project root to Python path
+project_root = str(Path(__file__).parent.parent)
+sys.path.append(project_root)
 
-from database.db_handler import DatabaseHandler
-import time as timenator
 import locale
-import os
 import platform
 import time as timenator
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pandas as pd
 import pytz
@@ -109,8 +100,10 @@ elif system == 'linux':
 
         return (pd.DataFrame): DataFrame with timestamp and prices in (kr / kWh).
         """
+        # Set locale to Danish
+        locale.setlocale(locale.LC_TIME, 'da_DK.UTF-8')
 
-        # Setup Chrome options
+        # Setup Firefox options
         firefox_options = FirefoxOptions()
         firefox_options.add_argument("--headless")
         firefox_options.set_preference("general.useragent.override",
@@ -156,13 +149,16 @@ elif system == 'linux':
 
             if price_data:
                 df = pd.DataFrame(price_data)
-                # Parse the full datetime string directly
-                df['timestamp'] = pd.to_datetime(df['timestamp'], format='%A, %B %d at %I:%M %p')
+                # Parse the full datetime string with Danish locale
+                df['timestamp'] = pd.to_datetime(df['timestamp'], format='%A, %d %B at %H:%M')
                 # Set the year to current year since it's missing from the input
                 current_year = datetime.now(pytz.timezone('Europe/Copenhagen')).year
                 df['timestamp'] = df['timestamp'].apply(lambda x: x.replace(year=current_year))
                 # Add timezone information
                 df['timestamp'] = df['timestamp'].dt.tz_localize('Europe/Copenhagen')
+                
+                # Reset locale back to system default
+                locale.setlocale(locale.LC_TIME, '')
                 return df
 
             return None
