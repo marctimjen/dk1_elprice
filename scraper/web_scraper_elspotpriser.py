@@ -100,6 +100,7 @@ elif system == 'linux':
 
         return (pd.DataFrame): DataFrame with timestamp and prices in (kr / kWh).
         """
+        print("running linux")
         # Try different Danish locale variations
         danish_locales = ['da_DK.UTF-8', 'da_DK.utf8', 'da_DK', 'da']
         locale_set = False
