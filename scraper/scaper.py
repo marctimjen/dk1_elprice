@@ -27,6 +27,7 @@ def validate_prices(api_df, web_df, max_diff_threshold=0.5):
     tomorrow = datetime.now(pytz.timezone('Europe/Copenhagen')).date() + timedelta(days=1)
     api_df = api_df[api_df['timestamp'].dt.date == tomorrow].copy()
     web_df = web_df[web_df['timestamp'].dt.date == tomorrow].copy()
+    print(web_df.to_string(index=False))
 
     # Merge dataframes on timestamp to compare prices
     merged = pd.merge(
@@ -37,6 +38,7 @@ def validate_prices(api_df, web_df, max_diff_threshold=0.5):
     )
 
     if merged.empty:
+        print("No matching timestamps found between API and web prices")
         return False
 
     # Calculate price differences
