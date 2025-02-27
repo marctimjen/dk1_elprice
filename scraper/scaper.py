@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = str(Path(__file__).parent.parent)
+sys.path.append(project_root)
+
 from datetime import datetime, timedelta
 import pandas as pd
 import pytz
