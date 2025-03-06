@@ -21,6 +21,8 @@ crontab -e
 
 */1 * * * * /bin/timeout -s 2 290 /home/ubuntu/dydx-trading-bot/venv/bin/python3 /home/ubuntu/dydx-trading-bot/program/telegram_func.py > /home/user/output.txt 2>&1
 
+01 21 * * * /bin/timeout -s 2 1200 /home/pimaster/github/dk1_elprice/venv/bin/python3 /home/pimaster/github/dk1_elprice/scraper/scaper.py > output.txt 2>&1
+
 
 crontab -l
 
